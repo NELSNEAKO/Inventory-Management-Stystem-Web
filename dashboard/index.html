@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Font Awesome CDN -->
+  <script src="https://kit.fontawesome.com/fada9cdcb6.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+</head>
+<body>
+  <div class="container">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <h3>NAVIGATION CENTER</h3>
+      <ul>
+        <li class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
+        <li><i class="fas fa-chart-line"></i> Analytics</li>
+        <li><i class="fas fa-boxes"></i> Inventory</li>
+        <li><i class="fas fa-user-friends"></i> Users</li>
+        <li><i class="fas fa-envelope"></i> Messages</li>
+        <li><i class="fas fa-cogs"></i> Settings</li>
+        <li class="logout"><i class="fas fa-sign-out-alt"></i> Logout</li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      <section class="main-section">
+        <!-- Add inside .main-section -->
+        <div class="header-bar">
+          <div class="header-left">
+            <div class="header-title">AnalyticsPro</div>
+            <div class="header-search">
+              <input type="text" placeholder="Search..." />
+              <i class="fas fa-search"></i>
+            </div>
+          </div>
+
+          <div class="header-icons">
+            <i class="fas fa-bell"></i>
+            <i class="fas fa-envelope"></i>
+            <i class="fas fa-cog"></i>
+          </div>
+
+          <div class="header-profile">
+            <img src="https://i.pravatar.cc/40?img=1" alt="Profile" />
+          </div>
+        </div>
+      </section>
+      <!-- Other dashboard content goes here -->
+
+      <div class="main-content">
+        <!-- Container 1: Overview -->
+        <div class="dashboard-container">
+          <h2>Overview</h2>
+          <div class="overview-cards">
+            <div class="card" id="revenue-card">
+              <i class="fas fa-dollar-sign"></i>
+              <div>
+                <h4>Total Revenue</h4>
+                <p>This Week: ₱<span id="revenue-week">0</span></p>
+                <p>Last Week: ₱<span id="revenue-last">0</span></p>
+              </div>
+            </div>
+            <div class="card" id="profit-card">
+              <i class="fas fa-coins"></i>
+              <div>
+                <h4>Net Profit</h4>
+                <p>This Week: ₱<span id="profit-week">0</span></p>
+                <p>Last Week: ₱<span id="profit-last">0</span></p>
+              </div>
+            </div>
+            <div class="card" id="sold-card">
+              <i class="fas fa-shopping-cart"></i>
+              <div>
+                <h4>Items Sold</h4>
+                <p>This Week: <span id="sold-week">0</span></p>
+                <p>Last Week: <span id="sold-last">0</span></p>
+              </div>
+            </div>
+            <div class="card" id="growth-card">
+              <i class="fas fa-chart-line"></i>
+              <div>
+                <h4>Growth</h4>
+                <p><span id="growth-percent">0%</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        <!-- attendance Containers -->
+        <div class="dashboard-container">
+          <div class="attendance-report">
+            <h2>Attendance Report</h2>
+            <div class="heatmap" id="heatmap-grid"></div>
+          </div>
+        </div>
+
+        <!-- Revenue Report -->
+        <div class="dashboard-container" id="revenue-report">
+          <h2>Revenue Report (Last 7 Days)</h2>
+          <canvas id="revenueChart" height="150"></canvas>
+        </div>
+
+        <!-- Top Selling Items -->
+        <div class="dashboard-container" id="top-items">
+          <h2>Most Popular Items</h2>
+          <div class="top-items-container" id="topItemsContainer"></div>
+        </div>
+
+      </div>
+      
+    </main>
+  </div>
+  
+  <script>
+    $(document).ready(function() {
+      $.ajax({
+        url: 'fetch_overview.php',
+        method: 'GET',
+        dataType: 'json',
+        success: function(data) {
+          $('#revenue-week').text(data.revenue_week);
+          $('#revenue-last').text(data.revenue_last);
+          $('#profit-week').text(data.profit_week);
+          $('#profit-last').text(data.profit_last);
+          $('#sold-week').text(data.sold_week);
+          $('#sold-last').text(data.sold_last);
+          $('#growth-percent').text(data.growth_percent + '%');
+        },
+        error: function(err) {
+          console.error('Error fetching data:', err);
+        }
+      });
+    });
+  </script>
+
+  <script>
+    $(document).ready(function () {
+      $.ajax({
+        url: 'fetch_attendance.php',
+        method: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          const heatmap = $('#heatmap-grid');
+          const maxCount = Math.max(...Object.values(data).map(row => Math.max(...Object.values(row))));
+  
+          const dayOrder = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+          dayOrder.forEach(day => {
+            for (let hour = 0; hour < 24; hour++) {
+              const count = data[day] && data[day][hour] ? data[day][hour] : 0;
+              const intensity = Math.ceil((count / maxCount) * 4); // 1 to 4 levels
+              const div = $('<div></div>')
+                .addClass('heatmap-square')
+                .addClass(`level-${intensity || 1}`)
+                .attr('title', `${day} @ ${hour}:00 → ${count} sale(s)`);
+              heatmap.append(div);
+            }
+          });
+        },
+        error: function (err) {
+          console.error('Heatmap load error:', err);
+        }
+      });
+    });
+  </script>
+
+  <script>
+    // Fetch revenue data for last 7 days
+    $.ajax({
+      url: 'fetch_revenue.php',
+      method: 'GET',
+      dataType: 'json',
+      success: function (data) {
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: 'Revenue (₱)',
+              data: data.revenue,
+              backgroundColor: '#4dd0e1',
+              borderRadius: 5
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: {
+                ticks: {
+                  color: '#fff'
+                }
+              },
+              x: {
+                ticks: {
+                  color: '#fff'
+                }
+              }
+            }
+          }
+        });
+      }
+    });
+  
+    // Fetch top-selling items
+    $.ajax({
+      url: 'fetch_top_items.php',
+      method: 'GET',
+      dataType: 'json',
+      success: function (items) {
+        const container = $('#topItemsContainer');
+        items.forEach(item => {
+          const card = `
+            <div class="item-card">
+              <div class="item-bar"></div>
+              <strong>${item.name}</strong>
+              <p>Sold: ${item.total_qty}</p>
+              <p>Revenue: ₱${item.total_revenue}</p>
+            </div>
+          `;
+          container.append(card);
+        });
+      }
+    });
+  </script>
+  
+</body>
+</html>
